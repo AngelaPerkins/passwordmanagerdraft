@@ -1,17 +1,58 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
+const express = require("express");
+const app = express();
+const mysql = require("mysql");
+const cors = require("cors");
+const PORT = 3001;
 
-import App from './App';
-import reportWebVitals from './reportWebVitals';
+const db = mysql.createConnection({
+    user: "root",
+    host: "localhost",
+    password: "",
+    database: "passwordmanager",
+  });
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+app.use(cors());
+app.use(express.json());
 
-// If you want to start measuring performance in your app, pass a function
-// to log results (for example: reportWebVitals(console.log))
-// or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
-reportWebVitals();
+
+
+app.post("/addpassword", (req, res) => {
+    const { password, title } = req.body;
+    try {
+      const hashedPassword = encrypt(password);
+      db.query(
+        "INSERT INTO passwords (password, title, iv) VALUES (?,?,?)",
+        [hashedPassword.password, title, hashedPassword.iv],
+        (err, result) => {
+          if (err) {
+            console.error("Error adding password:", err);
+            res.status(500).send("Internal Server Error");
+          } else {
+            res.status(200).send("Success");
+          }
+        }
+      );
+    } catch (error) {
+      console.error("Encryption error:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+  
+
+app.get("/showpasswords", (req, res) => {
+  db.query("SELECT * FROM passwords;", (err, result) => {
+    if (err) {
+      console.log(err);
+    } else {
+      res.send(result);
+    }
+  });
+});
+
+app.post("/decryptpassword", (req, res) => {
+  res.send(decrypt(req.body));
+});
+
+app.listen(PORT, () => {
+  console.log("Server is running");
+});
